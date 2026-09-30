@@ -41,7 +41,7 @@ textarea {
 
 #cookieVisual {
   margin-top:10px;
-  font-size:16px; /* 文字サイズを少し調整して見やすく */
+  font-size:16px;
   word-break: break-all;
   line-height: 1.4;
   text-align: left;
@@ -127,7 +127,6 @@ const db = firebase.firestore();
 const battleRef = db.collection("games").doc("mashBattle");
 
 function addScore(player) {
-  // すでにどちらかが100回勝っていたら追加させない
   battleRef.get().then(doc => {
     if(doc.exists && (doc.data().p1 >= 100 || doc.data().p2 >= 100)) return;
 
@@ -223,7 +222,7 @@ function loadComments(){
 }
 loadComments();
 
-// ===== クッキー =====
+// ===== クッキー（リアルタイム同期） =====
 const cookieRef = db.collection("counts").doc("cookie");
 
 function addCookie(){
@@ -232,25 +231,24 @@ function addCookie(){
   }, { merge: true });
 }
 
-function renderCookies(count){
-  let box = document.getElementById("cookieVisual");
-  const LIMIT = 10000; // 上限10000個
-  
-  if(count <= LIMIT){
-    // 1万個までスクロールなしでそのまま全部並べる（長すぎる場合は自動で折り返します）
-    box.textContent = "🍪".repeat(count);
-  }else{
-    box.textContent = "🍪".repeat(LIMIT) + " 他 " + (count - LIMIT) + " 個";
-  }
-}
-
 cookieRef.onSnapshot(doc => {
   let count = 0;
-  if(doc.exists && doc.data().count){
+  if(doc.exists && doc.data().count !== undefined){
     count = doc.data().count;
   }
+  
+  // 数値をリアルタイムに更新
   document.getElementById("cookieCount").textContent = count;
-  renderCookies(count);
+
+  // 絵文字の表示をリアルタイムに更新（最大10000個まで）
+  let box = document.getElementById("cookieVisual");
+  const LIMIT = 10000;
+  
+  if(count <= LIMIT){
+    box.textContent = "🍪".repeat(count);
+  } else {
+    box.textContent = "🍪".repeat(LIMIT) + " 他 " + (count - LIMIT) + " 個";
+  }
 });
 </script>
 
