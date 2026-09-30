@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body { margin:0; font-family:Arial; background:#f9f9f9; }
+
+header {
+  display:flex; justify-content:space-between; align-items:center;
+  background:#1a237e; padding:12px; color:white;
+}
+
+.section { background:white; margin:15px; padding:15px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+
+textarea {
+  width:100%;
+  height:60px;
+}
+
+.comment {
+  background:#f1f1f1;
+  padding:10px;
+  margin-top:10px;
+  border-radius:6px;
+}
+
+.cookie-btn, .game-btn {
+  padding:10px 20px;
+  font-size:16px;
+  cursor:pointer;
+  border:none;
+  border-radius:5px;
+  color:white;
+}
+.cookie-btn { background: #ff9800; }
+.p1-btn { background: #e53935; }
+.p2-btn { background: #1e88e5; }
+.reset-btn { background: #757575; margin-top: 10px; }
+
+#cookieVisual {
+  margin-top:10px;
+  font-size:24px;
+  word-wrap: break-word;
+}
+
+.battle-container {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+  margin-top: 15px;
+}
+.player-box {
+  flex: 1;
+  padding: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>htmlテスト ＆ 連打バトル</div>
+</header>
+
+<!-- 連打バトルセクション -->
+<div class="section">
+  <h2>⚡ リアルタイム連打バトル (先着100回)</h2>
+  <div id="winnerText" style="font-weight:bold; color:red; font-size:18px; margin-bottom:10px;"></div>
+  
+  <div class="battle-container">
+    <div class="player-box">
+      <h3>プレイヤー1 (赤)</h3>
+      <p>スコア: <span id="p1Count">0</span></p>
+      <button class="game-btn p1-btn" onclick="addScore('p1')">連打！🔥</button>
+    </div>
+    <div class="player-box">
+      <h3>プレイヤー2 (青)</h3>
+      <p>スコア: <span id="p2Count">0</span></p>
+      <button class="game-btn p2-btn" onclick="addScore('p2')">連打！🔥</button>
+    </div>
+  </div>
+  <div style="text-align: center;">
+    <button class="game-btn reset-btn" onclick="resetGame()">ゲームリセット</button>
+  </div>
+</div>
+
+<!-- コメントセクション -->
+<div class="section">
+  <h3>💬 コメント欄</h3>
+  <textarea id="commentInput" placeholder="コメントを書く"></textarea><br>
+  <button onclick="postComment()">投稿</button>
+  <div id="commentList"></div>
+</div>
+
+<!-- クッキーセクション -->
+<div class="section" style="text-align:center;">
+  <h2>🍪 クッキー: <span id="cookieCount">0</span></h2>
+  <button class="cookie-btn" onclick="addCookie()">クッキーを焼く🍪</button>
+  <div id="cookieVisual"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ===== Firebase設定 =====
+const firebaseConfig = {
+  apiKey: "AIzaSyCAgrvrjt4jvKGi85l_FKZw_ErhaOEicq8",
+  authDomain: "ikuze-15962.firebaseapp.com",
+  projectId: "ikuze-15962",
+  storageBucket: "ikuze-15962.firebasestorage.app",
+  messagingSenderId: "447043429205",
+  appId: "1:447043429205:web:11e4227749a536afd545dc"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ===== 連打バトル機能 =====
+const battleRef = db.collection("games").doc("mashBattle");
+
+function addScore(player) {
+  // すでにどちらかが100回勝っていたら追加させない
+  battleRef.get().then(doc => {
+    if(doc.exists && (doc.data().p1 >= 100 || doc.data().p2 >= 100)) return;
+
+    let updateData = {};
+    if(player === 'p1') {
+      updateData.p1 = firebase.firestore.FieldValue.increment(1);
+    } else {
+      updateData.p2 = firebase.firestore.FieldValue.increment(1);
+    }
+    battleRef.set(updateData, { merge: true });
+  });
+}
+
+function resetGame() {
+  battleRef.set({ p1: 0, p2: 0 });
+}
+
+battleRef.onSnapshot(doc => {
+  let p1 = 0, p2 = 0;
+  if(doc.exists) {
+    p1 = doc.data().p1 || 0;
+    p2 = doc.data().p2 || 0;
+  }
+
+  document.getElementById("p1Count").textContent = p1;
+  document.getElementById("p2Count").textContent = p2;
+
+  let winnerText = document.getElementById("winnerText");
+  if(p1 >= 100) {
+    winnerText.textContent = "🎉 プレイヤー1 (赤) の勝利！";
+  } else if(p2 >= 100) {
+    winnerText.textContent = "🎉 プレイヤー2 (青) の勝利！";
+  } else {
+    winnerText.textContent = "";
+  }
+});
+
+// ===== コメント投稿 =====
+function postComment(){
+  let input = document.getElementById("commentInput");
+  let text = input.value.trim();
+  if(!text) return;
+
+  db.collection("comments").add({
+    text: text,
+    time: Date.now(),
+    report: 0
+  })
+  .then(() => {
+    input.value = "";
+  })
+  .catch(err => {
+    alert("投稿失敗: " + err.message);
+  });
+}
+
+// ===== コメント表示 =====
+function loadComments(){
+  db.collection("comments")
+  .orderBy("time","desc")
+  .onSnapshot(snapshot => {
+    let list = document.getElementById("commentList");
+    list.innerHTML = "";
+
+    snapshot.forEach(doc => {
+      let c = doc.data();
+      let div = document.createElement("div");
+      div.className = "comment";
+
+      let text = document.createElement("div");
+      text.textContent = c.text;
+      div.appendChild(text);
+
+      if(c.text.includes("☺️")){
+        let btn = document.createElement("button");
+        btn.textContent = "追放 (" + (c.report || 0) + "/10)";
+
+        btn.onclick = () => {
+          let newCount = (c.report || 0) + 1;
+          if(newCount >= 10){
+            db.collection("comments").doc(doc.id).delete();
+          }else{
+            db.collection("comments").doc(doc.id).update({
+              report: newCount
+            });
+          }
+        };
+        div.appendChild(btn);
+      }
+      list.appendChild(div);
+    });
+  });
+}
+loadComments();
+
+// ===== クッキー =====
+const cookieRef = db.collection("counts").doc("cookie");
+
+function addCookie(){
+  cookieRef.set({
+    count: firebase.firestore.FieldValue.increment(1)
+  }, { merge: true });
+}
+
+function renderCookies(count){
+  let box = document.getElementById("cookieVisual");
+  const LIMIT = 500;
+  if(count <= LIMIT){
+    box.textContent = "🍪".repeat(count);
+  }else{
+    box.textContent = "🍪".repeat(LIMIT) + " 他 " + (count - LIMIT) + " 個";
+  }
+}
+
+cookieRef.onSnapshot(doc => {
+  let count = 0;
+  if(doc.exists && doc.data().count){
+    count = doc.data().count;
+  }
+  document.getElementById("cookieCount").textContent = count;
+  renderCookies(count);
+});
+</script>
+
+</body>
+</html>
