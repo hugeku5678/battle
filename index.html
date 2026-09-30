@@ -41,8 +41,13 @@ textarea {
 
 #cookieVisual {
   margin-top:10px;
-  font-size:24px;
-  word-wrap: break-word;
+  font-size:16px; /* 文字サイズを少し調整して見やすく */
+  word-break: break-all;
+  line-height: 1.4;
+  text-align: left;
+  background: #fff3e0;
+  padding: 10px;
+  border-radius: 6px;
 }
 
 .battle-container {
@@ -229,8 +234,10 @@ function addCookie(){
 
 function renderCookies(count){
   let box = document.getElementById("cookieVisual");
-  const LIMIT = 500;
+  const LIMIT = 10000; // 上限10000個
+  
   if(count <= LIMIT){
+    // 1万個までスクロールなしでそのまま全部並べる（長すぎる場合は自動で折り返します）
     box.textContent = "🍪".repeat(count);
   }else{
     box.textContent = "🍪".repeat(LIMIT) + " 他 " + (count - LIMIT) + " 個";
